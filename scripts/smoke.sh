@@ -21,6 +21,11 @@ TF_DIR=terraform
 OUT_DIR=.smoke
 mkdir -p "$OUT_DIR"
 
+# jq do Windows emite CRLF; um \r sobrando num campo assinado invalida o POST no S3.
+jq() { command jq "$@" | tr -d '\r'; }
+# Com MSYS_NO_PATHCONV, /dev/null nao vira NUL para o curl (binario Windows): descartar em arquivo.
+DISCARD="$OUT_DIR/discard"
+
 API_URL=$(terraform -chdir="$TF_DIR" output -raw api_base_url)
 BUCKET=$(terraform -chdir="$TF_DIR" output -raw documents_bucket)
 POOL_ID=$(terraform -chdir="$TF_DIR" output -raw user_pool_id)
@@ -99,7 +104,7 @@ cat "$OUT_DIR/403.json"; echo
 
 # ---------------------------------------------------------------------------
 titulo "5. API autenticada: requisicao sem token"
-CODE=$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/documents/$KEY")
+CODE=$(curl -sS -o "$DISCARD" -w '%{http_code}' "$API_URL/documents/$KEY")
 [ "$CODE" = "401" ] && ok "HTTP $CODE sem Authorization" || falha "esperado 401, veio $CODE"
 
 # ---------------------------------------------------------------------------
@@ -112,7 +117,7 @@ cat "$OUT_DIR/400.json"; echo
 
 # ---------------------------------------------------------------------------
 titulo "7. Documento inexistente"
-CODE=$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/documents/usuario-$USER_A/nao-existe.pdf" -H "Authorization: $TOKEN_A")
+CODE=$(curl -sS -o "$DISCARD" -w '%{http_code}' "$API_URL/documents/usuario-$USER_A/nao-existe.pdf" -H "Authorization: $TOKEN_A")
 [ "$CODE" = "404" ] && ok "HTTP $CODE" || falha "esperado 404, veio $CODE"
 
 # ---------------------------------------------------------------------------
@@ -126,7 +131,7 @@ rm -f "$OUT_DIR/grande.pdf"
 
 # ---------------------------------------------------------------------------
 titulo "9. Block Public Access: URL publica direta do S3"
-CODE=$(curl -sS -o /dev/null -w '%{http_code}' "https://$BUCKET.s3.$REGION.amazonaws.com/$KEY")
+CODE=$(curl -sS -o "$DISCARD" -w '%{http_code}' "https://$BUCKET.s3.$REGION.amazonaws.com/$KEY")
 [ "$CODE" = "403" ] && ok "HTTP $CODE no acesso publico" || falha "esperado 403, veio $CODE"
 
 # ---------------------------------------------------------------------------
