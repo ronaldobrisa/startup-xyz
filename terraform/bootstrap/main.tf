@@ -38,6 +38,10 @@ locals {
   state_bucket_name = "${var.project}-tfstate-${local.account_id}"
   ci_role_name      = "gh-actions-${var.project}"
 
+  github_owner      = split("/", var.github_repo)[0]
+  github_name       = split("/", var.github_repo)[1]
+  github_sub_prefix = "repo:${local.github_owner}@*/${local.github_name}@*"
+
   managed_prefix = "${var.project}-*"
 }
 
@@ -121,8 +125,8 @@ data "aws_iam_policy_document" "ci_assume_role" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_repo}:pull_request",
+        "${local.github_sub_prefix}:ref:refs/heads/main:actor:${var.github_actor}",
+        "${local.github_sub_prefix}:pull_request:actor:${var.github_actor}",
       ]
     }
   }

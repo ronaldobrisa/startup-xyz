@@ -15,6 +15,12 @@ variable "github_repo" {
   default     = "ronaldobrisa/startup-xyz"
 }
 
+variable "github_actor" {
+  description = "Unico usuario do GitHub cujas execucoes podem assumir a role de CI (claim actor no sub do token OIDC)"
+  type        = string
+  default     = "ronaldobrisa"
+}
+
 variable "notification_email" {
   description = "Destinatario dos alertas do AWS Budget e do topico SNS de alarmes"
   type        = string
