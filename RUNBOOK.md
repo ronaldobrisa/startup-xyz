@@ -40,7 +40,7 @@ Regra do guia: ninguém lê slide; a banca pode perguntar a qualquer um, então 
 ## Véspera (12/10)
 
 - [ ] Console AWS > Billing: nenhuma fatura pendente, cartão válido
-- [ ] `aws sts get-caller-identity` retorna a conta 992382426972
+- [ ] `aws sts get-caller-identity` retorna a conta RBTI (a mesma do `.env`)
 - [ ] `mise install && mise run lint` sem erros; `git status` limpo e `main` igual ao remoto
 - [ ] `mise run check-orphans` passa (nada sobrou do ensaio)
 - [ ] `mise run plan` mostra 33 criações → revisar → `mise run apply` → `mise run smoke` com 10 OK

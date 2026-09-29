@@ -13,6 +13,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 terraform/.build/
+*.auto.tfvars
+!*.auto.tfvars.example
 
 .smoke/
 
@@ -28,3 +30,4 @@ Thumbs.db
 *.key
 .env
 .env.*
+!.env.example

@@ -24,7 +24,6 @@ variable "github_actor" {
 variable "notification_email" {
   description = "Destinatario dos alertas do AWS Budget e do topico SNS de alarmes"
   type        = string
-  default     = "ti.rbrodrigues@gmail.com"
 }
 
 variable "monthly_budget_usd" {

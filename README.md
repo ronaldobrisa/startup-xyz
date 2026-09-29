@@ -33,9 +33,14 @@ Fonte do diagrama em [diagrama.mmd](docs/arquitetura/diagrama.mmd) e [diagrama.s
 - `curl` e `openssl` (já vêm com o Git Bash no Windows)
 
 ```bash
+cp .env.example .env
+cp terraform/bootstrap/terraform.auto.tfvars.example terraform/bootstrap/terraform.auto.tfvars
 mise install
 mise run lint
 ```
+
+Preencha `.env` com o ID da conta AWS e o `terraform.auto.tfvars` com o e-mail que recebe alertas; os dois
+ficam fora do git.
 
 ## Estrutura
 
@@ -66,7 +71,7 @@ Na primeira execução em uma conta nova, o bucket ainda não existe: rode o `te
 bootstrap sem backend (`-backend=false`), aplique com estado local e depois migre com
 `terraform init -migrate-state` passando `-backend-config` de bucket e região.
 
-Confirme a assinatura de e-mail do SNS (link recebido em `ti.rbrodrigues@gmail.com`) e configure as
+Confirme a assinatura de e-mail do SNS (link enviado ao endereço de `notification_email`) e configure as
 variáveis do repositório no GitHub:
 
 ```bash

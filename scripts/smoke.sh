@@ -7,6 +7,7 @@ export MSYS_NO_PATHCONV=1
 TF_DIR=terraform
 OUT_DIR=.smoke
 mkdir -p "$OUT_DIR"
+trap 'rm -rf "$OUT_DIR"' EXIT
 
 jq() { command jq "$@" | tr -d '\r'; }
 DISCARD="$OUT_DIR/discard"

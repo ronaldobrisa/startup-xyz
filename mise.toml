@@ -5,11 +5,11 @@ jq = "latest"
 gh = "2.97.0"
 
 [env]
+_.file = ".env"
 PROJECT = "startup-xyz"
 ENV = "demo"
 AWS_REGION = "us-east-1"
-AWS_ACCOUNT_ID = "992382426972"
-STATE_BUCKET = "startup-xyz-tfstate-992382426972"
+STATE_BUCKET = "{{ env.PROJECT }}-tfstate-{{ env.AWS_ACCOUNT_ID }}"
 TF_IN_AUTOMATION = "1"
 
 [tasks.fmt]
