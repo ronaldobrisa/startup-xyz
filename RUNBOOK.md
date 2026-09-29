@@ -14,6 +14,15 @@ Destroy depois da banca.
 | 12/10 à noite | `mise run plan` + `apply` + `smoke` do ambiente da apresentação; deixar ligado (custo da noite: centavos) | Ronaldo |
 | 13/10 | Apresentação; depois da banca `destroy` + `check-orphans` | todos / Ronaldo |
 
+## Tempos medidos no primeiro ciclo completo (28/09, notebook, us-east-1)
+
+| Etapa | Tempo | Observação |
+|---|---|---|
+| `mise run apply` | 72 s | 33 recursos; a regra de lifecycle do S3 é o item mais lento (~58 s) |
+| `mise run smoke` | 42 s | 13 verificações OK |
+| `mise run destroy` | 16 s | 33 recursos |
+| `mise run check-orphans` | 5 a 40 s | a Tagging API pode listar o User Pool do Cognito por minutos após a exclusão; o script confirma na API do serviço antes de acusar |
+
 ## Distribuição de falas (12 min)
 
 | Ordem | Quem | Slides | Tema | Tempo |
