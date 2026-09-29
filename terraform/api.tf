@@ -1,11 +1,3 @@
-# API Gateway REST: ponto de entrada unico com autenticacao Cognito, validacao de payload
-# (JSON Schema, antes de invocar a Lambda), throttling e integracao proxy.
-#
-#   POST /documents           -> presigned POST de upload em usuario-{id}/<filename>
-#   GET  /documents/{key+}    -> presigned URL de download, 403 se a key nao pertencer ao usuario
-#
-# REST (e nao HTTP API) por causa do validador de requisicao e dos usage plans/WAF futuros. Ver ADR 0005.
-
 resource "aws_api_gateway_rest_api" "this" {
   name        = "${local.name}-api"
   description = "Ingestao e recuperacao segura de documentos (Startup XYZ)"
@@ -22,8 +14,6 @@ resource "aws_api_gateway_authorizer" "cognito" {
   provider_arns   = [aws_cognito_user_pool.this.arn]
   identity_source = "method.request.header.Authorization"
 }
-
-# --- Validacao de payload ("REST API com validacao", slide 8) --------------
 
 resource "aws_api_gateway_model" "upload_request" {
   rest_api_id  = aws_api_gateway_rest_api.this.id
@@ -57,8 +47,6 @@ resource "aws_api_gateway_request_validator" "body" {
   validate_request_body       = true
   validate_request_parameters = false
 }
-
-# --- Recursos e metodos -----------------------------------------------------
 
 resource "aws_api_gateway_resource" "documents" {
   rest_api_id = aws_api_gateway_rest_api.this.id
@@ -115,12 +103,9 @@ resource "aws_api_gateway_integration" "get_document" {
   uri                     = aws_lambda_alias.live.invoke_arn
 }
 
-# --- Deployment e stage -----------------------------------------------------
-
 resource "aws_api_gateway_deployment" "this" {
   rest_api_id = aws_api_gateway_rest_api.this.id
 
-  # Qualquer mudanca de configuracao (nao so recriacao) gera novo deployment.
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_resource.documents,

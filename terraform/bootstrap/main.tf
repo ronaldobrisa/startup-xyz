@@ -1,10 +1,3 @@
-# Bootstrap: recursos permanentes da conta que NAO participam do ciclo apply/destroy da demo.
-# Aplicado uma vez, localmente, com estado local (terraform.tfstate neste diretorio).
-#
-#   - bucket S3 de estado remoto (versionado, criptografado, sem acesso publico, lock nativo)
-#   - role IAM assumida pelo GitHub Actions via OIDC, com minimo privilegio
-#   - AWS Budget mensal com alerta por e-mail
-
 terraform {
   required_version = ">= 1.11"
 
@@ -39,13 +32,8 @@ locals {
   state_bucket_name = "${var.project}-tfstate-${local.account_id}"
   ci_role_name      = "gh-actions-${var.project}"
 
-  # Prefixo de nomes que a role de CI pode gerenciar. Tudo que a demo cria usa "<project>-<env>-...".
   managed_prefix = "${var.project}-*"
 }
-
-# ---------------------------------------------------------------------------
-# Bucket de estado remoto
-# ---------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "terraform_state" {
   bucket = local.state_bucket_name
@@ -103,11 +91,6 @@ resource "aws_s3_bucket_policy" "terraform_state" {
   depends_on = [aws_s3_bucket_public_access_block.terraform_state]
 }
 
-# ---------------------------------------------------------------------------
-# Role OIDC do GitHub Actions
-# ---------------------------------------------------------------------------
-
-# O provedor OIDC ja existe na conta (compartilhado entre projetos); apenas referenciado.
 data "aws_iam_openid_connect_provider" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
@@ -128,7 +111,6 @@ data "aws_iam_policy_document" "ci_assume_role" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Somente este repositorio: branch main (push e workflow_dispatch) e pull requests.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
@@ -147,8 +129,6 @@ resource "aws_iam_role" "ci" {
   max_session_duration = 3600
 }
 
-# Minimo privilegio por servico. Cada statement e restrito por ARN ao prefixo do projeto
-# sempre que o servico permite; onde nao permite (Describe/List globais), o recurso e "*".
 data "aws_iam_policy_document" "ci" {
   statement {
     sid       = "Identity"
@@ -156,7 +136,6 @@ data "aws_iam_policy_document" "ci" {
     resources = ["*"]
   }
 
-  # --- Estado remoto -------------------------------------------------------
   statement {
     sid       = "StateBucketList"
     actions   = ["s3:ListBucket", "s3:GetBucketVersioning"]
@@ -169,7 +148,6 @@ data "aws_iam_policy_document" "ci" {
     resources = ["${aws_s3_bucket.terraform_state.arn}/*"]
   }
 
-  # --- S3 do projeto: SOMENTE buckets de documentos (nunca o bucket de estado) ---
   statement {
     sid       = "ProjectDocumentBuckets"
     actions   = ["s3:*"]
@@ -182,14 +160,12 @@ data "aws_iam_policy_document" "ci" {
     resources = ["arn:${local.partition}:s3:::${var.project}-*-documents-${local.account_id}/*"]
   }
 
-  # --- Lambda ---------------------------------------------------------------
   statement {
     sid       = "ProjectLambda"
     actions   = ["lambda:*"]
     resources = ["arn:${local.partition}:lambda:${local.region}:${local.account_id}:function:${local.managed_prefix}"]
   }
 
-  # --- API Gateway (nao suporta restricao por nome; restrito a REST APIs da regiao) ---
   statement {
     sid     = "ProjectApiGateway"
     actions = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
@@ -200,7 +176,6 @@ data "aws_iam_policy_document" "ci" {
     ]
   }
 
-  # --- Cognito --------------------------------------------------------------
   statement {
     sid       = "ProjectCognito"
     actions   = ["cognito-idp:*"]
@@ -213,7 +188,6 @@ data "aws_iam_policy_document" "ci" {
     resources = ["*"]
   }
 
-  # --- CloudWatch Logs ------------------------------------------------------
   statement {
     sid       = "ProjectLogGroups"
     actions   = ["logs:*"]
@@ -226,7 +200,6 @@ data "aws_iam_policy_document" "ci" {
     resources = ["*"]
   }
 
-  # --- IAM (somente roles/politicas do projeto) ----------------------------
   statement {
     sid = "ProjectIamRoles"
     actions = [
@@ -250,7 +223,6 @@ data "aws_iam_policy_document" "ci" {
     }
   }
 
-  # --- CloudWatch: alarmes e dashboard do projeto -----------------------------
   statement {
     sid = "ProjectAlarms"
     actions = [
@@ -274,7 +246,6 @@ data "aws_iam_policy_document" "ci" {
     resources = [aws_sns_topic.alerts.arn]
   }
 
-  # --- Tagging API (check-orphans) -----------------------------------------
   statement {
     sid       = "TaggingRead"
     actions   = ["tag:GetResources"]
@@ -288,10 +259,6 @@ resource "aws_iam_role_policy" "ci" {
   policy = data.aws_iam_policy_document.ci.json
 }
 
-# ---------------------------------------------------------------------------
-# Alertas operacionais: topico SNS com assinatura de e-mail (confirmar uma vez)
-# ---------------------------------------------------------------------------
-
 resource "aws_sns_topic" "alerts" {
   name = "${var.project}-alerts"
 }
@@ -301,12 +268,6 @@ resource "aws_sns_topic_subscription" "alerts_email" {
   protocol  = "email"
   endpoint  = var.notification_email
 }
-
-# ---------------------------------------------------------------------------
-# Budget: rede de seguranca contra recurso orfao.
-# Sem filtro por tag de proposito: filtro exige ativar a tag como "cost allocation tag" no
-# Billing e leva ate 24 h para valer; o Budget da conta inteira funciona no ato.
-# ---------------------------------------------------------------------------
 
 resource "aws_budgets_budget" "monthly_cost" {
   name         = "${var.project}-monthly"

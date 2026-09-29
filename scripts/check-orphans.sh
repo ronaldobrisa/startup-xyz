@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Prova de conta limpa: falha se a Tagging API ainda encontrar recursos do projeto/ambiente.
-# A API pode levar alguns segundos para refletir exclusoes, por isso tenta algumas vezes.
 set -euo pipefail
 
 PROJECT="${PROJECT:-startup-xyz}"

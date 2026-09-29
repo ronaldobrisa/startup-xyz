@@ -19,8 +19,6 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-# --- Armazenamento e ciclo de vida -----------------------------------------
-
 variable "archive_after_days" {
   description = "Dias em S3 Standard antes da transicao para Glacier Deep Archive (RF: 365)"
   type        = number
@@ -38,8 +36,6 @@ variable "force_destroy_bucket" {
   type        = bool
   default     = false
 }
-
-# --- API e uploads ----------------------------------------------------------
 
 variable "presigned_url_ttl_seconds" {
   description = "Validade das presigned URLs/POSTs gerados pela Lambda"
@@ -64,8 +60,6 @@ variable "api_throttle_burst" {
   default = 40
 }
 
-# --- Lambda -----------------------------------------------------------------
-
 variable "lambda_memory_mb" {
   type    = number
   default = 256
@@ -88,8 +82,6 @@ variable "log_retention_days" {
   default     = 1
 }
 
-# --- Identidade -------------------------------------------------------------
-
 variable "cognito_deletion_protection" {
   description = "Protecao contra exclusao do User Pool (ACTIVE em prod; INACTIVE em ambientes efemeros)"
   type        = string
@@ -100,8 +92,6 @@ variable "cognito_deletion_protection" {
     error_message = "Use ACTIVE ou INACTIVE."
   }
 }
-
-# --- Observabilidade --------------------------------------------------------
 
 variable "alerts_topic_name" {
   description = "Nome do topico SNS (criado no bootstrap) que recebe os alarmes"

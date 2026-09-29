@@ -1,6 +1,3 @@
-# Bucket de documentos: isolamento por prefixo usuario-{id}/, versioning, criptografia,
-# Block Public Access e lifecycle para Glacier Deep Archive.
-
 resource "aws_s3_bucket" "documents" {
   bucket        = "${local.name}-documents-${local.account_id}"
   force_destroy = var.force_destroy_bucket
@@ -38,8 +35,6 @@ resource "aws_s3_bucket_ownership_controls" "documents" {
   }
 }
 
-# RF "Arquivamento automatico": objetos com mais de N dias vao para Deep Archive.
-# Versoes antigas seguem a mesma regra; uploads multipart abandonados sao limpos.
 resource "aws_s3_bucket_lifecycle_configuration" "documents" {
   bucket = aws_s3_bucket.documents.id
 
@@ -61,13 +56,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
       storage_class   = "DEEP_ARCHIVE"
     }
 
-    # Versoes antigas protegem contra exclusao/sobrescrita acidental, mas nao ficam para sempre
-    # (cada versao em Deep Archive tem cobranca minima de 180 dias).
     noncurrent_version_expiration {
       noncurrent_days = var.noncurrent_version_expiration_days
     }
 
-    # Remove marcadores de exclusao que ficaram sem versoes por baixo.
     expiration {
       expired_object_delete_marker = true
     }
@@ -87,7 +79,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
   depends_on = [aws_s3_bucket_versioning.documents]
 }
 
-# Politica do bucket: so TLS, e so a role da Lambda toca em objetos (alem do root/admin da conta).
 data "aws_iam_policy_document" "documents_bucket" {
   statement {
     sid     = "DenyInsecureTransport"

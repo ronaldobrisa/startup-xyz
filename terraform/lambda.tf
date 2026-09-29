@@ -1,14 +1,9 @@
-# Funcao unica (Python 3.12, sem dependencias) empacotada pelo proprio Terraform.
-# Versao publicada + alias "live": o API Gateway aponta para o alias, o que permite
-# Provisioned Concurrency por ambiente (prod) sem custo na demo.
-
 data "archive_file" "api" {
   type        = "zip"
   source_file = "${path.module}/../lambda/handler.py"
   output_path = "${path.module}/.build/handler.zip"
 }
 
-# Declarado explicitamente para (a) controlar retencao e (b) ser destruido junto com o resto.
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/lambda/${local.name}-api"
   retention_in_days = var.log_retention_days
@@ -57,8 +52,6 @@ resource "aws_lambda_alias" "live" {
   function_version = aws_lambda_function.api.version
 }
 
-# Trade-off do slide 6: cold start mitigado por Provisioned Concurrency onde houver SLA de latencia.
-# Cobra por tempo provisionado mesmo sem trafego; por isso e 0 em demo/dev e 1 em prod.
 resource "aws_lambda_provisioned_concurrency_config" "live" {
   count = var.provisioned_concurrency > 0 ? 1 : 0
 

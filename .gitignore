@@ -1,9 +1,9 @@
-# Terraform
 **/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
 tfplan
+tfplan-destroy
 crash.log
 crash.*.log
 override.tf
@@ -14,20 +14,16 @@ override.tf.json
 terraform.rc
 terraform/.build/
 
-# Arquivos gerados pelo smoke test
 .smoke/
 
-# Python
 __pycache__/
 *.pyc
 
-# Sistema / editores
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Nunca versionar credenciais
 *.pem
 *.key
 .env

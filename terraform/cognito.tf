@@ -1,12 +1,8 @@
-# Autenticacao: Cognito User Pool (tier Lite, 10 mil MAU gratuitos) + App Client sem secret.
-# O API Gateway valida o ID token; a Lambda usa o claim cognito:username como id do tenant.
-
 resource "aws_cognito_user_pool" "this" {
   name                = "${local.name}-users"
   user_pool_tier      = "LITE"
   deletion_protection = var.cognito_deletion_protection
 
-  # Usuarios sao provisionados pelo operador (sem auto-cadastro publico).
   admin_create_user_config {
     allow_admin_create_user_only = true
   }

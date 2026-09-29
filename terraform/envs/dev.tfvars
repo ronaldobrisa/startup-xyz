@@ -1,4 +1,3 @@
-# Exemplo: ambiente de desenvolvimento (mesmo codigo, variaveis diferentes).
 environment                        = "dev"
 force_destroy_bucket               = true
 cognito_deletion_protection        = "INACTIVE"

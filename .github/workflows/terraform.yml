@@ -87,7 +87,6 @@ jobs:
             -backend-config="key=${TF_ENV}/terraform.tfstate" \
             -backend-config="region=${AWS_REGION}"
 
-      # -lock=false: plan e somente leitura e nao pode bloquear um apply local em andamento.
       - name: Terraform plan
         run: |
           set -o pipefail

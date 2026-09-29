@@ -1,6 +1,3 @@
-# Role de execucao da Lambda: logs no proprio log group e S3 SOMENTE dentro de usuario-*/.
-# Mesmo com um bug no codigo, a role nao alcanca objetos fora do padrao de prefixo.
-
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]

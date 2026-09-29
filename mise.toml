@@ -12,10 +12,6 @@ AWS_ACCOUNT_ID = "992382426972"
 STATE_BUCKET = "startup-xyz-tfstate-992382426972"
 TF_IN_AUTOMATION = "1"
 
-# ---------------------------------------------------------------------------
-# Qualidade
-# ---------------------------------------------------------------------------
-
 [tasks.fmt]
 description = "terraform fmt em todo o repositorio"
 run = "terraform fmt -recursive terraform"
@@ -32,10 +28,6 @@ tflint --init >/dev/null
 (cd terraform && tflint --recursive)
 echo "lint OK"
 """
-
-# ---------------------------------------------------------------------------
-# Bootstrap (uma vez por conta): bucket de estado, role OIDC, Budget
-# ---------------------------------------------------------------------------
 
 [tasks.bootstrap-plan]
 description = "Plan do bootstrap (bucket de estado, role OIDC do GitHub, Budget). Estado local."
@@ -58,10 +50,6 @@ terraform apply -input=false tfplan
 rm -f tfplan
 terraform output
 """
-
-# ---------------------------------------------------------------------------
-# Ciclo da demo
-# ---------------------------------------------------------------------------
 
 [tasks.init]
 description = "terraform init com backend S3 (key por ambiente: $ENV/terraform.tfstate)"
@@ -154,16 +142,13 @@ run = """
 set -euo pipefail
 BUCKET=$(terraform -chdir=terraform output -raw documents_bucket)
 KEY="${1:-usuario-123/contrato.pdf}"
-cat <<EOF
-# 1) Pedir a restauracao (Bulk: ate 48 h, mais barato; Standard: ate 12 h)
-aws s3api restore-object --bucket "$BUCKET" --key "$KEY" \\
-  --restore-request '{"Days":7,"GlacierJobParameters":{"Tier":"Bulk"}}'
-
-# 2) Acompanhar: "Restore" passa de ongoing-request="true" para "false"
-aws s3api head-object --bucket "$BUCKET" --key "$KEY" --query Restore
-
-# 3) Apos restaurado, o GET /documents/$KEY volta a funcionar por 7 dias
-EOF
+echo "Passo 1 - pedir a restauracao (Bulk: ate 48 h, mais barato; Standard: ate 12 h):"
+echo "  aws s3api restore-object --bucket \\"$BUCKET\\" --key \\"$KEY\\" --restore-request '{\\"Days\\":7,\\"GlacierJobParameters\\":{\\"Tier\\":\\"Bulk\\"}}'"
+echo
+echo "Passo 2 - acompanhar ate ongoing-request=\\"false\\":"
+echo "  aws s3api head-object --bucket \\"$BUCKET\\" --key \\"$KEY\\" --query Restore"
+echo
+echo "Passo 3 - com o objeto restaurado, GET /documents/$KEY volta a funcionar por 7 dias."
 """
 
 [tasks.check-orphans]
@@ -187,10 +172,6 @@ mise run destroy
 mise run check-orphans
 echo "demo completa em $(( $(date +%s) - total_start ))s"
 """
-
-# ---------------------------------------------------------------------------
-# GitHub
-# ---------------------------------------------------------------------------
 
 [tasks.ci-status]
 description = "Ultimas execucoes dos workflows"

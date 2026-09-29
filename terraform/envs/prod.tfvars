@@ -1,5 +1,3 @@
-# Exemplo: producao. Bucket nao pode ser destruido com dados; User Pool protegido;
-# 1 instancia pre-aquecida da Lambda (~US$ 3/mes) elimina cold start no caminho critico.
 environment                        = "prod"
 force_destroy_bucket               = false
 cognito_deletion_protection        = "ACTIVE"

@@ -1,7 +1,3 @@
-# Observabilidade: alarmes publicando no topico SNS do bootstrap + dashboard CloudWatch.
-# Tudo dentro da faixa gratuita permanente (10 alarmes, 3 dashboards).
-
-# ARN construido (nao data source) para o plan funcionar antes do bootstrap e nao exigir leitura no apply.
 locals {
   alerts_topic_arn = "arn:aws:sns:${var.aws_region}:${local.account_id}:${var.alerts_topic_name}"
 }
@@ -15,8 +11,6 @@ locals {
     FunctionName = aws_lambda_function.api.function_name
   }
 }
-
-# --- API Gateway --------------------------------------------------------------
 
 resource "aws_cloudwatch_metric_alarm" "api_5xx" {
   alarm_name          = "${local.name}-api-5xx"
@@ -50,8 +44,6 @@ resource "aws_cloudwatch_metric_alarm" "api_latency_p99" {
   ok_actions          = [local.alerts_topic_arn]
 }
 
-# --- Lambda -------------------------------------------------------------------
-
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
   alarm_name          = "${local.name}-lambda-errors"
   alarm_description   = "Excecoes nao tratadas na Lambda"
@@ -83,8 +75,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
   alarm_actions       = [local.alerts_topic_arn]
   ok_actions          = [local.alerts_topic_arn]
 }
-
-# --- Dashboard ----------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "this" {
   dashboard_name = local.name

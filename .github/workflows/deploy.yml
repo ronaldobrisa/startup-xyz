@@ -1,5 +1,3 @@
-# Plano B da apresentacao e rede de seguranca contra recurso orfao.
-# Disparo manual apenas (workflow_dispatch). Nunca roda apply automaticamente.
 name: Deploy (manual)
 
 on:

@@ -1,4 +1,3 @@
-# Ambiente efemero da apresentacao: sobe, prova, desce.
 environment                        = "demo"
 force_destroy_bucket               = true
 cognito_deletion_protection        = "INACTIVE"
