@@ -1,0 +1,51 @@
+%% Fonte versionada do diagrama do slide 5. Renderize em https://mermaid.live ou com a extensao do VS Code.
+%% A imagem final para o deck (visual escuro/roxo) esta em diagrama.svg / diagrama.png.
+flowchart LR
+    subgraph cliente["Cliente da Startup XYZ"]
+        U["App / usuario<br/>(tenant usuario-123)"]
+    end
+
+    subgraph identidade["Identidade"]
+        C["Amazon Cognito<br/>User Pool (Lite)<br/>ID token JWT"]
+    end
+
+    subgraph api["Entrada unica"]
+        G["API Gateway REST<br/>autorizador Cognito<br/>validador JSON Schema<br/>throttling"]
+    end
+
+    subgraph compute["Processamento leve"]
+        L["AWS Lambda (Python 3.12, arm64)<br/>alias live<br/>gera presigned POST / URL<br/>prefixo usuario-{id}/"]
+        R["IAM role<br/>s3:Put/GetObject<br/>apenas usuario-*/*"]
+    end
+
+    subgraph storage["Armazenamento e ciclo de vida"]
+        S["Amazon S3 - documentos<br/>usuario-123/ | usuario-456/<br/>Versioning · SSE-S3 · Block Public Access · TLS"]
+        D["S3 Glacier Deep Archive<br/>lifecycle 365 d<br/>versoes antigas expiram em 730 d"]
+    end
+
+    subgraph obs["Observabilidade"]
+        W["CloudWatch<br/>logs JSON · 4 alarmes · dashboard"]
+        N["SNS -> e-mail da equipe"]
+    end
+
+    subgraph iac["Entrega (IaC)"]
+        GH["GitHub Actions<br/>OIDC, sem chaves"]
+        TF["Terraform<br/>estado em S3 (lock nativo)"]
+    end
+
+    U -- "1. login" --> C
+    C -- "ID token" --> U
+    U -- "2. POST /documents<br/>GET /documents/{key}" --> G
+    G -- "3. invoca (proxy)" --> L
+    L -.- R
+    L -- "4. assina URL/POST<br/>so no prefixo do tenant" --> U
+    U -- "5. upload / download direto<br/>(presigned, 5 min, max 25 MB)" --> S
+    S -- "365 dias" --> D
+    G -- "metricas" --> W
+    L -- "logs e metricas" --> W
+    W -- "alarme" --> N
+    GH -- "assume role" --> TF
+    TF -. "provisiona" .-> G
+    TF -. "provisiona" .-> L
+    TF -. "provisiona" .-> S
+    TF -. "provisiona" .-> C

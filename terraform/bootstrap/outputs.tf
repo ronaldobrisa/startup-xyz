@@ -11,3 +11,8 @@ output "ci_role_arn" {
 output "budget_name" {
   value = aws_budgets_budget.monthly_cost.name
 }
+
+output "alerts_topic_arn" {
+  description = "Topico SNS dos alarmes (a assinatura de e-mail precisa ser confirmada uma vez)"
+  value       = aws_sns_topic.alerts.arn
+}

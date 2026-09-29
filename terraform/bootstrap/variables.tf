@@ -16,7 +16,7 @@ variable "github_repo" {
 }
 
 variable "notification_email" {
-  description = "Destinatario dos alertas do AWS Budget"
+  description = "Destinatario dos alertas do AWS Budget e do topico SNS de alarmes"
   type        = string
   default     = "ti.rbrodrigues@gmail.com"
 }

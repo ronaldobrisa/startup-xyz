@@ -1,11 +1,13 @@
 """API de documentos da Startup XYZ.
 
-Uma unica funcao atras do API Gateway (autorizador Cognito):
+Uma unica funcao atras do API Gateway (autorizador Cognito + validador de payload):
 
     POST /documents          body: {"filename": "...", "content_type": "application/pdf"}
-                             -> 201 {"key", "upload_url", "expires_in"}
+                             -> 201 {"key", "upload": {"url", "fields"}, "max_bytes", "expires_in"}
+                                (presigned POST: Content-Type fixo e tamanho limitado pela politica assinada)
     GET  /documents/{key+}   -> 200 {"key", "download_url", "expires_in"}
                              -> 403 se a key nao estiver no prefixo do usuario autenticado
+                             -> 404 se o documento nao existir
 
 O id do tenant vem do claim ``cognito:username`` do ID token, ja validado pelo API Gateway.
 O prefixo ``usuario-{id}/`` e aplicado no codigo E na politica IAM da role (defesa em profundidade).
@@ -27,6 +29,7 @@ from botocore.exceptions import ClientError
 
 BUCKET = os.environ["BUCKET_NAME"]
 URL_TTL = int(os.environ.get("URL_TTL_SECONDS", "300"))
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,6 +38,9 @@ s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
 
 FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 ALLOWED_CONTENT_TYPES = {"application/pdf", "image/png", "image/jpeg"}
+
+# Sem s3:ListBucket na role, o S3 responde 403 (nao 404) para key inexistente. Ambos viram 404 aqui.
+NOT_FOUND_CODES = {"404", "403", "NoSuchKey", "NotFound", "AccessDenied"}
 
 
 def _response(status: int, body: dict[str, Any]) -> dict[str, Any]:
@@ -63,13 +69,14 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     logger.info({"acao": "request", "method": method, "resource": resource, "tenant": prefix})
 
     if method == "POST" and resource == "/documents":
-        return _create_upload_url(event, prefix)
+        return _create_upload(event, prefix)
     if method == "GET" and resource == "/documents/{key+}":
         return _create_download_url(event, prefix)
     return _response(404, {"erro": "rota nao encontrada"})
 
 
-def _create_upload_url(event: dict[str, Any], prefix: str) -> dict[str, Any]:
+def _create_upload(event: dict[str, Any], prefix: str) -> dict[str, Any]:
+    # O API Gateway ja validou o JSON Schema; as checagens abaixo sao a segunda camada.
     try:
         body = json.loads(event.get("body") or "{}")
     except ValueError:
@@ -84,19 +91,27 @@ def _create_upload_url(event: dict[str, Any], prefix: str) -> dict[str, Any]:
         return _response(400, {"erro": f"content_type deve ser um de {sorted(ALLOWED_CONTENT_TYPES)}"})
 
     key = f"{prefix}{filename}"
-    url = s3.generate_presigned_url(
-        "put_object",
-        Params={"Bucket": BUCKET, "Key": key, "ContentType": content_type},
+
+    # Presigned POST: a politica assinada fixa a key, o Content-Type e o intervalo de tamanho.
+    # O S3 rejeita (403/400) qualquer upload que fuja disso, sem passar pela Lambda.
+    presigned = s3.generate_presigned_post(
+        Bucket=BUCKET,
+        Key=key,
+        Fields={"Content-Type": content_type},
+        Conditions=[
+            {"Content-Type": content_type},
+            ["content-length-range", 1, MAX_UPLOAD_BYTES],
+        ],
         ExpiresIn=URL_TTL,
     )
-    logger.info({"acao": "upload_url", "key": key})
+    logger.info({"acao": "upload_url", "key": key, "max_bytes": MAX_UPLOAD_BYTES})
     return _response(
         201,
         {
             "key": key,
-            "upload_url": url,
-            "method": "PUT",
-            "headers": {"Content-Type": content_type},
+            "upload": {"method": "POST", "url": presigned["url"], "fields": presigned["fields"]},
+            "content_type": content_type,
+            "max_bytes": MAX_UPLOAD_BYTES,
             "expires_in": URL_TTL,
         },
     )
@@ -114,8 +129,8 @@ def _create_download_url(event: dict[str, Any], prefix: str) -> dict[str, Any]:
     try:
         s3.head_object(Bucket=BUCKET, Key=key)
     except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code")
-        if code in ("404", "NoSuchKey", "NotFound"):
+        code = str(exc.response.get("Error", {}).get("Code"))
+        if code in NOT_FOUND_CODES:
             return _response(404, {"erro": "documento nao encontrado"})
         raise
 

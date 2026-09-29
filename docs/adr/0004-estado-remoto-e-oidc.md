@@ -11,13 +11,17 @@ pipeline precisa de credenciais AWS sem chaves de longa duração no GitHub.
 
 - **Bootstrap separado** (`terraform/bootstrap`, estado local, aplicado uma vez): bucket
   `startup-xyz-tfstate-<conta>` versionado, criptografado e sem acesso público; role
-  `gh-actions-startup-xyz`; AWS Budget de US$ 5 por mês filtrado pela tag `Project`.
+  `gh-actions-startup-xyz`; tópico SNS de alertas com assinatura de e-mail; AWS Budget de US$ 5
+  por mês para a conta inteira (filtro por tag exigiria ativar a tag de alocação de custos no
+  Billing e levaria até 24 horas para valer).
 - **Backend S3 com `use_lockfile = true`** (Terraform 1.10+): lock via objeto `.tflock`,
   sem tabela DynamoDB. Uma key por ambiente: `<ambiente>/terraform.tfstate`.
 - **OIDC** com o provedor `token.actions.githubusercontent.com` já existente na conta. A trust
   policy aceita apenas o repositório `ronaldobrisa/startup-xyz` na branch `main` e em pull requests.
 - **Mínimo privilégio** na role de CI: cada serviço restrito por ARN ao prefixo `startup-xyz-*`;
-  IAM só em roles com esse prefixo e `PassRole` apenas para o Lambda.
+  S3 só nos buckets `startup-xyz-*-documents-<conta>` (nunca o bucket de estado, onde a role tem
+  apenas leitura e escrita de objetos); IAM só em roles com esse prefixo e `PassRole` apenas para
+  o Lambda; CloudWatch só em alarmes e dashboards do projeto.
 - **Apply nunca é automático**: PR e push em `main` rodam validação e plan; apply e destroy
   exigem `workflow_dispatch` com confirmação do nome do ambiente.
 

@@ -1,10 +1,14 @@
-# Exemplo: producao. Bucket nao pode ser destruido com dados; User Pool protegido.
-environment                 = "prod"
-force_destroy_bucket        = false
-cognito_deletion_protection = "ACTIVE"
-log_retention_days          = 90
-presigned_url_ttl_seconds   = 300
-archive_after_days          = 365
-lambda_memory_mb            = 512
-api_throttle_rate           = 100
-api_throttle_burst          = 200
+# Exemplo: producao. Bucket nao pode ser destruido com dados; User Pool protegido;
+# 1 instancia pre-aquecida da Lambda (~US$ 3/mes) elimina cold start no caminho critico.
+environment                        = "prod"
+force_destroy_bucket               = false
+cognito_deletion_protection        = "ACTIVE"
+log_retention_days                 = 90
+presigned_url_ttl_seconds          = 300
+max_upload_mb                      = 25
+archive_after_days                 = 365
+noncurrent_version_expiration_days = 730
+provisioned_concurrency            = 1
+lambda_memory_mb                   = 512
+api_throttle_rate                  = 100
+api_throttle_burst                 = 200

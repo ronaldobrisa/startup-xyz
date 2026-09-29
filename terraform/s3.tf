@@ -60,6 +60,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
       noncurrent_days = var.archive_after_days
       storage_class   = "DEEP_ARCHIVE"
     }
+
+    # Versoes antigas protegem contra exclusao/sobrescrita acidental, mas nao ficam para sempre
+    # (cada versao em Deep Archive tem cobranca minima de 180 dias).
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_expiration_days
+    }
+
+    # Remove marcadores de exclusao que ficaram sem versoes por baixo.
+    expiration {
+      expired_object_delete_marker = true
+    }
   }
 
   rule {

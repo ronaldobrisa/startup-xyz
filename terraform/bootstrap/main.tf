@@ -169,17 +169,17 @@ data "aws_iam_policy_document" "ci" {
     resources = ["${aws_s3_bucket.terraform_state.arn}/*"]
   }
 
-  # --- S3 do projeto (bucket de documentos) --------------------------------
+  # --- S3 do projeto: SOMENTE buckets de documentos (nunca o bucket de estado) ---
   statement {
-    sid       = "ProjectBuckets"
+    sid       = "ProjectDocumentBuckets"
     actions   = ["s3:*"]
-    resources = ["arn:${local.partition}:s3:::${local.managed_prefix}"]
+    resources = ["arn:${local.partition}:s3:::${var.project}-*-documents-${local.account_id}"]
   }
 
   statement {
-    sid       = "ProjectBucketObjects"
+    sid       = "ProjectDocumentObjects"
     actions   = ["s3:*"]
-    resources = ["arn:${local.partition}:s3:::${local.managed_prefix}/*"]
+    resources = ["arn:${local.partition}:s3:::${var.project}-*-documents-${local.account_id}/*"]
   }
 
   # --- Lambda ---------------------------------------------------------------
@@ -250,6 +250,30 @@ data "aws_iam_policy_document" "ci" {
     }
   }
 
+  # --- CloudWatch: alarmes e dashboard do projeto -----------------------------
+  statement {
+    sid = "ProjectAlarms"
+    actions = [
+      "cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms", "cloudwatch:DescribeAlarms",
+      "cloudwatch:ListTagsForResource", "cloudwatch:TagResource", "cloudwatch:UntagResource",
+    ]
+    resources = ["arn:${local.partition}:cloudwatch:${local.region}:${local.account_id}:alarm:${local.managed_prefix}"]
+  }
+
+  statement {
+    sid = "ProjectDashboards"
+    actions = [
+      "cloudwatch:PutDashboard", "cloudwatch:GetDashboard", "cloudwatch:DeleteDashboards",
+    ]
+    resources = ["arn:${local.partition}:cloudwatch::${local.account_id}:dashboard/${local.managed_prefix}"]
+  }
+
+  statement {
+    sid       = "AlertsTopicRead"
+    actions   = ["sns:GetTopicAttributes", "sns:ListTagsForResource"]
+    resources = [aws_sns_topic.alerts.arn]
+  }
+
   # --- Tagging API (check-orphans) -----------------------------------------
   statement {
     sid       = "TaggingRead"
@@ -265,7 +289,23 @@ resource "aws_iam_role_policy" "ci" {
 }
 
 # ---------------------------------------------------------------------------
-# Budget: rede de seguranca contra recurso orfao
+# Alertas operacionais: topico SNS com assinatura de e-mail (confirmar uma vez)
+# ---------------------------------------------------------------------------
+
+resource "aws_sns_topic" "alerts" {
+  name = "${var.project}-alerts"
+}
+
+resource "aws_sns_topic_subscription" "alerts_email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.notification_email
+}
+
+# ---------------------------------------------------------------------------
+# Budget: rede de seguranca contra recurso orfao.
+# Sem filtro por tag de proposito: filtro exige ativar a tag como "cost allocation tag" no
+# Billing e leva ate 24 h para valer; o Budget da conta inteira funciona no ato.
 # ---------------------------------------------------------------------------
 
 resource "aws_budgets_budget" "monthly_cost" {
@@ -274,11 +314,6 @@ resource "aws_budgets_budget" "monthly_cost" {
   limit_amount = tostring(var.monthly_budget_usd)
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
-
-  cost_filter {
-    name   = "TagKeyValue"
-    values = [format("user:Project$%s", var.project)] # formato da API: user:<chave>$<valor>
-  }
 
   notification {
     comparison_operator        = "GREATER_THAN"

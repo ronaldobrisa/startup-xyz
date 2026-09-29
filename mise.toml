@@ -69,6 +69,11 @@ run = """
 #!/usr/bin/env bash
 set -euo pipefail
 cd terraform
+if [ -f backend_override.tf ]; then
+  echo "ERRO: terraform/backend_override.tf ainda existe (backend local temporario, usado so antes do bootstrap)."
+  echo "      Remova o arquivo apos 'mise run bootstrap-apply' e rode 'mise run init' de novo."
+  exit 1
+fi
 terraform init -input=false -reconfigure \
   -backend-config="bucket=${STATE_BUCKET}" \
   -backend-config="key=${ENV}/terraform.tfstate" \
@@ -126,6 +131,39 @@ start=$(date +%s)
 terraform apply -input=false tfplan-destroy
 rm -f tfplan-destroy
 echo "destroy concluido em $(( $(date +%s) - start ))s"
+"""
+
+[tasks.outputs]
+description = "Mostra os outputs do ambiente (URL da API, bucket, dashboard...)"
+run = "terraform -chdir=terraform output"
+
+[tasks.dashboard]
+description = "Abre o dashboard CloudWatch do ambiente no navegador"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+URL=$(terraform -chdir=terraform output -raw dashboard_url)
+echo "$URL"
+(command -v start >/dev/null && start "$URL") || (command -v xdg-open >/dev/null && xdg-open "$URL") || true
+"""
+
+[tasks.restore-example]
+description = "Mostra como restaurar um documento do Glacier Deep Archive (uso: mise run restore-example <key>)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+BUCKET=$(terraform -chdir=terraform output -raw documents_bucket)
+KEY="${1:-usuario-123/contrato.pdf}"
+cat <<EOF
+# 1) Pedir a restauracao (Bulk: ate 48 h, mais barato; Standard: ate 12 h)
+aws s3api restore-object --bucket "$BUCKET" --key "$KEY" \\
+  --restore-request '{"Days":7,"GlacierJobParameters":{"Tier":"Bulk"}}'
+
+# 2) Acompanhar: "Restore" passa de ongoing-request="true" para "false"
+aws s3api head-object --bucket "$BUCKET" --key "$KEY" --query Restore
+
+# 3) Apos restaurado, o GET /documents/$KEY volta a funcionar por 7 dias
+EOF
 """
 
 [tasks.check-orphans]

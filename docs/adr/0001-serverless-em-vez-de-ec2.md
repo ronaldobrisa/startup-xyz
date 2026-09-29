@@ -21,4 +21,6 @@ uma função Lambda para a lógica e S3 como armazenamento. Nenhuma instância E
 - Limite de 15 minutos por execução da Lambda: irrelevante para emissão de URLs. Processamento
   pesado (Textract, Bedrock) na Fase 2 deve usar eventos do S3 e não a mesma função.
 - Cold start de algumas centenas de milissegundos na primeira chamada. Provisioned Concurrency
-  resolveria, mas cobra por tempo provisionado mesmo sem tráfego; fica fora até haver SLA de latência.
+  está implementada no alias `live` e é ligada por ambiente pela variável `provisioned_concurrency`:
+  0 em demo e dev (custo zero), 1 em prod (cerca de US$ 4 por mês com 512 MB). Cobra por tempo
+  provisionado mesmo sem tráfego, por isso só onde há SLA de latência.

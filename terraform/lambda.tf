@@ -1,4 +1,6 @@
 # Funcao unica (Python 3.12, sem dependencias) empacotada pelo proprio Terraform.
+# Versao publicada + alias "live": o API Gateway aponta para o alias, o que permite
+# Provisioned Concurrency por ambiente (prod) sem custo na demo.
 
 data "archive_file" "api" {
   type        = "zip"
@@ -14,7 +16,7 @@ resource "aws_cloudwatch_log_group" "api" {
 
 resource "aws_lambda_function" "api" {
   function_name = "${local.name}-api"
-  description   = "Gera presigned URLs de upload/download isoladas por prefixo usuario-{id}/"
+  description   = "Gera presigned POST/URL de upload/download isolados por prefixo usuario-{id}/"
 
   role    = aws_iam_role.lambda.arn
   runtime = "python3.12"
@@ -22,6 +24,7 @@ resource "aws_lambda_function" "api" {
 
   filename         = data.archive_file.api.output_path
   source_code_hash = data.archive_file.api.output_base64sha256
+  publish          = true
 
   architectures = ["arm64"]
   memory_size   = var.lambda_memory_mb
@@ -31,6 +34,7 @@ resource "aws_lambda_function" "api" {
     variables = {
       BUCKET_NAME     = aws_s3_bucket.documents.bucket
       URL_TTL_SECONDS = tostring(var.presigned_url_ttl_seconds)
+      MAX_UPLOAD_MB   = tostring(var.max_upload_mb)
       ENVIRONMENT     = var.environment
     }
   }
@@ -46,10 +50,28 @@ resource "aws_lambda_function" "api" {
   ]
 }
 
+resource "aws_lambda_alias" "live" {
+  name             = "live"
+  description      = "Versao servida pelo API Gateway"
+  function_name    = aws_lambda_function.api.function_name
+  function_version = aws_lambda_function.api.version
+}
+
+# Trade-off do slide 6: cold start mitigado por Provisioned Concurrency onde houver SLA de latencia.
+# Cobra por tempo provisionado mesmo sem trafego; por isso e 0 em demo/dev e 1 em prod.
+resource "aws_lambda_provisioned_concurrency_config" "live" {
+  count = var.provisioned_concurrency > 0 ? 1 : 0
+
+  function_name                     = aws_lambda_function.api.function_name
+  qualifier                         = aws_lambda_alias.live.name
+  provisioned_concurrent_executions = var.provisioned_concurrency
+}
+
 resource "aws_lambda_permission" "api_gateway" {
   statement_id  = "AllowApiGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.function_name
+  qualifier     = aws_lambda_alias.live.name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.this.execution_arn}/*/*"
 }

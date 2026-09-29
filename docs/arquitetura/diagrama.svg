@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d0a1c"/>
+      <stop offset="1" stop-color="#1a1030"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1a45"/>
+      <stop offset="1" stop-color="#1c1233"/>
+    </linearGradient>
+    <linearGradient id="boxHi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2a6e"/>
+      <stop offset="1" stop-color="#2d1b4a"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c77dba"/>
+    </marker>
+    <marker id="arrowDim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7d6aa3"/>
+    </marker>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      .title { fill: #d9c8ff; font-size: 44px; font-weight: 700; }
+      .sub   { fill: #b9a6e6; font-size: 20px; }
+      .lane  { fill: #8f7bc2; font-size: 17px; letter-spacing: 2px; font-weight: 600; }
+      .h     { fill: #f1e9ff; font-size: 24px; font-weight: 700; }
+      .t     { fill: #cbbcf2; font-size: 17px; }
+      .k     { fill: #f0a7de; font-size: 16px; font-weight: 600; }
+      .lbl   { fill: #e6d8ff; font-size: 16px; font-weight: 600; }
+      .num   { fill: #0d0a1c; font-size: 16px; font-weight: 800; }
+      .box   { fill: url(#box); stroke: #a06cd5; stroke-width: 2; rx: 18; }
+      .boxHi { fill: url(#boxHi); stroke: #e08ad2; stroke-width: 2.5; rx: 18; }
+      .lanebox { fill: none; stroke: #3d2a5f; stroke-width: 1.5; stroke-dasharray: 8 8; rx: 24; }
+      .flow  { stroke: #c77dba; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .flow2 { stroke: #c77dba; stroke-width: 3; fill: none; marker-end: url(#arrow); marker-start: url(#arrow); }
+      .dim   { stroke: #7d6aa3; stroke-width: 2; fill: none; stroke-dasharray: 7 7; marker-end: url(#arrowDim); }
+      .badge { fill: #f0a7de; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+
+  <!-- Titulo -->
+  <text x="80" y="82" class="title">Arquitetura Serverless: fluxo de acesso, dados e segurança</text>
+  <text x="80" y="118" class="sub">Startup XYZ · gestão, isolamento e arquivamento de ativos de IA · 100% gerenciado, multi-AZ nativo, custo proporcional ao uso</text>
+
+  <!-- Lanes -->
+  <rect x="60" y="160" width="1800" height="470" class="lanebox"/>
+  <text x="84" y="192" class="lane">FLUXO DE ACESSO E DADOS</text>
+  <rect x="60" y="660" width="1160" height="200" class="lanebox"/>
+  <text x="84" y="692" class="lane">OBSERVABILIDADE</text>
+  <rect x="1250" y="660" width="610" height="200" class="lanebox"/>
+  <text x="1274" y="692" class="lane">ENTREGA (IaC E CI/CD)</text>
+
+  <!-- Cliente -->
+  <rect x="90" y="330" width="230" height="150" class="box"/>
+  <text x="205" y="372" class="h" text-anchor="middle">Cliente</text>
+  <text x="205" y="402" class="t" text-anchor="middle">app / usuário</text>
+  <text x="205" y="428" class="k" text-anchor="middle">tenant usuario-123</text>
+  <text x="205" y="454" class="t" text-anchor="middle">envia PDF / imagem</text>
+
+  <!-- Cognito -->
+  <rect x="420" y="210" width="300" height="130" class="box"/>
+  <text x="570" y="248" class="h" text-anchor="middle">Amazon Cognito</text>
+  <text x="570" y="276" class="t" text-anchor="middle">User Pool (tier Lite, 10 mil MAU grátis)</text>
+  <text x="570" y="300" class="t" text-anchor="middle">emite ID token JWT</text>
+  <text x="570" y="324" class="k" text-anchor="middle">claim cognito:username = id do tenant</text>
+
+  <!-- API Gateway -->
+  <rect x="420" y="380" width="300" height="220" class="boxHi"/>
+  <text x="570" y="418" class="h" text-anchor="middle">API Gateway REST</text>
+  <text x="570" y="448" class="t" text-anchor="middle">ponto de entrada único</text>
+  <text x="570" y="474" class="k" text-anchor="middle">autorizador Cognito (JWT)</text>
+  <text x="570" y="498" class="k" text-anchor="middle">validador de payload (JSON Schema)</text>
+  <text x="570" y="522" class="t" text-anchor="middle">throttling por stage</text>
+  <text x="570" y="552" class="t" text-anchor="middle">POST /documents</text>
+  <text x="570" y="576" class="t" text-anchor="middle">GET  /documents/{key+}</text>
+
+  <!-- Lambda -->
+  <rect x="820" y="380" width="330" height="150" class="boxHi"/>
+  <text x="985" y="418" class="h" text-anchor="middle">AWS Lambda</text>
+  <text x="985" y="446" class="t" text-anchor="middle">Python 3.12 · arm64 · alias live</text>
+  <text x="985" y="472" class="t" text-anchor="middle">gera presigned POST / URL (5 min)</text>
+  <text x="985" y="498" class="k" text-anchor="middle">só dentro de usuario-{id}/ → senão 403</text>
+  <text x="985" y="520" class="t" text-anchor="middle">Provisioned Concurrency por ambiente</text>
+
+  <!-- IAM role -->
+  <rect x="820" y="548" width="330" height="62" class="box"/>
+  <text x="985" y="574" class="h" text-anchor="middle" font-size="19">IAM role da Lambda</text>
+  <text x="985" y="598" class="k" text-anchor="middle">s3:PutObject / GetObject apenas em usuario-*/*</text>
+
+  <!-- S3 -->
+  <rect x="1250" y="210" width="330" height="270" class="boxHi"/>
+  <text x="1415" y="248" class="h" text-anchor="middle">Amazon S3</text>
+  <text x="1415" y="276" class="t" text-anchor="middle">bucket de documentos · 11 noves · ≥ 3 AZs</text>
+  <text x="1415" y="306" class="k" text-anchor="middle">usuario-123/  ·  usuario-456/  ·  …</text>
+  <text x="1415" y="338" class="t" text-anchor="middle">Versioning</text>
+  <text x="1415" y="362" class="t" text-anchor="middle">Criptografia SSE-S3</text>
+  <text x="1415" y="386" class="t" text-anchor="middle">Block Public Access (total)</text>
+  <text x="1415" y="410" class="t" text-anchor="middle">Política: só TLS</text>
+  <text x="1415" y="440" class="t" text-anchor="middle">limite 25 MB por documento</text>
+  <text x="1415" y="464" class="t" text-anchor="middle">(imposto na política assinada)</text>
+
+  <!-- Glacier -->
+  <rect x="1250" y="510" width="330" height="100" class="box"/>
+  <text x="1415" y="546" class="h" text-anchor="middle" font-size="21">S3 Glacier Deep Archive</text>
+  <text x="1415" y="572" class="k" text-anchor="middle">lifecycle: após 365 dias (−96 % por GB)</text>
+  <text x="1415" y="596" class="t" text-anchor="middle">versões antigas expiram em 730 dias</text>
+
+  <!-- CloudWatch -->
+  <rect x="90" y="720" width="420" height="110" class="box"/>
+  <text x="300" y="758" class="h" text-anchor="middle">Amazon CloudWatch</text>
+  <text x="300" y="786" class="t" text-anchor="middle">logs JSON · métricas da API e da Lambda</text>
+  <text x="300" y="812" class="k" text-anchor="middle">4 alarmes (5XX, p99, erros, throttles) · dashboard</text>
+
+  <!-- SNS -->
+  <rect x="620" y="720" width="260" height="110" class="box"/>
+  <text x="750" y="758" class="h" text-anchor="middle">Amazon SNS</text>
+  <text x="750" y="786" class="t" text-anchor="middle">tópico de alertas</text>
+  <text x="750" y="812" class="k" text-anchor="middle">e-mail da equipe</text>
+
+  <!-- Budget -->
+  <rect x="960" y="720" width="230" height="110" class="box"/>
+  <text x="1075" y="758" class="h" text-anchor="middle" font-size="21">AWS Budgets</text>
+  <text x="1075" y="786" class="t" text-anchor="middle">teto mensal da conta</text>
+  <text x="1075" y="812" class="k" text-anchor="middle">alerta em 50 % e 100 %</text>
+
+  <!-- GitHub Actions -->
+  <rect x="1280" y="720" width="260" height="110" class="box"/>
+  <text x="1410" y="758" class="h" text-anchor="middle" font-size="21">GitHub Actions</text>
+  <text x="1410" y="786" class="t" text-anchor="middle">plan em PR · apply/destroy manual</text>
+  <text x="1410" y="812" class="k" text-anchor="middle">OIDC → IAM role, sem chaves</text>
+
+  <!-- Terraform -->
+  <rect x="1580" y="720" width="250" height="110" class="box"/>
+  <text x="1705" y="758" class="h" text-anchor="middle" font-size="21">Terraform</text>
+  <text x="1705" y="786" class="t" text-anchor="middle">um código, N ambientes</text>
+  <text x="1705" y="812" class="k" text-anchor="middle">estado em S3, lock nativo</text>
+
+  <!-- Fluxos principais -->
+  <!-- 1 login: cliente -> cognito -->
+  <path d="M320,385 C380,340 380,275 420,275" class="flow2"/>
+  <circle cx="360" cy="325" r="14" class="badge"/><text x="360" y="331" class="num" text-anchor="middle">1</text>
+  <text x="90" y="318" class="lbl">login ⇄ ID token</text>
+
+  <!-- 2 chamada com token: cliente -> api -->
+  <path d="M320,440 L420,470" class="flow"/>
+  <circle cx="370" cy="437" r="14" class="badge"/><text x="370" y="443" class="num" text-anchor="middle">2</text>
+  <text x="228" y="506" class="lbl">Authorization: JWT</text>
+
+  <!-- 3 api -> lambda -->
+  <path d="M720,455 L820,455" class="flow"/>
+  <circle cx="770" cy="435" r="14" class="badge"/><text x="770" y="441" class="num" text-anchor="middle">3</text>
+  <text x="770" y="480" class="lbl" text-anchor="middle" font-size="13">proxy</text>
+
+  <!-- 4 lambda -> cliente (presigned) : sai pela direita e volta por baixo -->
+  <path d="M1150,510 L1200,510 L1200,640 L205,640 L205,480" class="flow"/>
+  <circle cx="600" cy="640" r="14" class="badge"/><text x="600" y="646" class="num" text-anchor="middle">4</text>
+  <text x="620" y="646" class="lbl">devolve presigned POST/URL do próprio prefixo (ou 403)</text>
+
+  <!-- 5 cliente -> S3 direto (por cima do Cognito) -->
+  <path d="M260,330 C260,150 1000,150 1250,240" class="flow"/>
+  <circle cx="700" cy="172" r="14" class="badge"/><text x="700" y="178" class="num" text-anchor="middle">5</text>
+  <text x="720" y="178" class="lbl">upload / download direto no S3 com a URL assinada (5 min · 25 MB)</text>
+
+  <!-- lambda -> S3 head (dim) -->
+  <path d="M1150,470 L1250,430" class="dim"/>
+  <text x="1160" y="430" class="t" font-size="14">verifica existência</text>
+
+  <!-- S3 -> Glacier -->
+  <path d="M1415,480 L1415,510" class="flow"/>
+
+  <!-- Metricas -> CloudWatch (dim) -->
+  <path d="M570,600 L570,660 L300,660 L300,720" class="dim"/>
+  <path d="M900,610 L900,660 L300,660" class="dim"/>
+  <text x="440" y="708" class="t" font-size="14" text-anchor="middle">métricas e logs</text>
+
+  <!-- CloudWatch -> SNS -> (Budget lado a lado) -->
+  <path d="M510,775 L620,775" class="flow"/>
+  <text x="565" y="765" class="lbl" text-anchor="middle" font-size="14">alarme</text>
+
+  <!-- GitHub -> Terraform -->
+  <path d="M1540,775 L1580,775" class="flow"/>
+
+  <!-- Terraform provisiona (dim) -->
+  <path d="M1705,720 L1705,640 L1415,640 L1415,610" class="dim"/>
+  <text x="1500" y="632" class="t" font-size="14" text-anchor="middle">provisiona API, Lambda, Cognito, S3, alarmes</text>
+
+  <!-- Legenda -->
+  <rect x="60" y="890" width="1800" height="130" class="lanebox"/>
+  <text x="84" y="922" class="lane">CAMADAS DE SEGURANÇA</text>
+  <text x="90" y="958" class="t"><tspan class="k">1</tspan>  Cognito: cliente não escolhe o próprio id, ele vem do token   ·   <tspan class="k">2</tspan>  API Gateway: JWT válido e payload no schema, ou nada chega à Lambda   ·   <tspan class="k">3</tspan>  Lambda: só assina keys em usuario-{id}/</text>
+  <text x="90" y="990" class="t"><tspan class="k">4</tspan>  IAM: a role nem consegue tocar fora de usuario-*/*   ·   <tspan class="k">5</tspan>  S3: Block Public Access, só TLS, criptografia, versioning, URLs que expiram em 5 min e limitam 25 MB   ·   sem VPC porque nada roda em rede privada</text>
+</svg>

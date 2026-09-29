@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Prova ao vivo da arquitetura (slide "Demonstracao Pratica & Evidencias de Implantacao"):
 #   1. cria dois usuarios no Cognito (123 e 456) e obtem tokens
-#   2. usuario 123 pede presigned URL e faz upload de um PDF
+#   2. usuario 123 pede presigned POST e faz upload de um PDF
 #   3. usuario 123 recupera o proprio documento
 #   4. usuario 456 tenta ler o documento do 123 -> 403 (isolamento multi-tenant)
 #   5. sem token -> 401 (API autenticada)
-#   6. URL publica do S3 -> 403 (Block Public Access)
-#   7. mostra versioning, Block Public Access e lifecycle do bucket
+#   6. payload invalido -> 400 pelo validador do API Gateway, sem invocar a Lambda
+#   7. documento inexistente -> 404
+#   8. upload acima do limite -> rejeitado pelo S3 (politica do presigned POST)
+#   9. URL publica do S3 -> 403 (Block Public Access)
+#  10. mostra versioning, Block Public Access, lifecycle e alarmes
 #
 # Requisitos: terraform (outputs do ambiente ja aplicado), aws cli, curl, jq, openssl.
 set -euo pipefail
@@ -31,9 +34,17 @@ FILENAME=contrato.pdf
 PASSWORD="Demo-$(openssl rand -hex 6)-Aa1!"
 
 pass=0; fail=0
-ok()   { echo "  [OK]     $*"; pass=$((pass+1)); }
-falha(){ echo "  [FALHOU] $*"; fail=$((fail+1)); }
+ok()    { echo "  [OK]     $*"; pass=$((pass+1)); }
+falha() { echo "  [FALHOU] $*"; fail=$((fail+1)); }
 titulo(){ echo; echo "== $* =="; }
+
+# Faz o upload via presigned POST: campos assinados + arquivo, nessa ordem.
+upload_post() { # $1 = json da resposta do POST /documents, $2 = arquivo
+  local resp="$1" file="$2" url args=()
+  url=$(echo "$resp" | jq -r '.upload.url')
+  while IFS=$'\t' read -r k v; do args+=(-F "$k=$v"); done < <(echo "$resp" | jq -r '.upload.fields | to_entries[] | "\(.key)\t\(.value)"')
+  curl -sS -o "$OUT_DIR/upload-resp.xml" -w '%{http_code}' "${args[@]}" -F "file=@$file" "$url"
+}
 
 # ---------------------------------------------------------------------------
 titulo "1. Usuarios no Cognito ($POOL_ID)"
@@ -56,20 +67,18 @@ TOKEN_B=$(token_de "$USER_B")
 ok "ID tokens obtidos (claim cognito:username = $USER_A / $USER_B)"
 
 # ---------------------------------------------------------------------------
-titulo "2. Upload como usuario $USER_A via presigned URL"
+titulo "2. Upload como usuario $USER_A via presigned POST"
 printf '%%PDF-1.4\n%% Documento de teste da Startup XYZ - %s\n%%%%EOF\n' "$(date -u +%FT%TZ)" > "$OUT_DIR/$FILENAME"
 
 RESP=$(curl -sS -X POST "$API_URL/documents" \
   -H "Authorization: $TOKEN_A" -H "Content-Type: application/json" \
   -d "{\"filename\":\"$FILENAME\",\"content_type\":\"application/pdf\"}")
-echo "$RESP" | jq '{key, method, expires_in}'
+echo "$RESP" | jq '{key, content_type, max_bytes, expires_in, campos_assinados: (.upload.fields | keys)}'
 KEY=$(echo "$RESP" | jq -r '.key')
-UPLOAD_URL=$(echo "$RESP" | jq -r '.upload_url')
 [ "$KEY" = "usuario-$USER_A/$FILENAME" ] && ok "key isolada no prefixo usuario-$USER_A/" || falha "key inesperada: $KEY"
 
-CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$UPLOAD_URL" \
-  -H "Content-Type: application/pdf" --data-binary "@$OUT_DIR/$FILENAME")
-[ "$CODE" = "200" ] && ok "PUT na presigned URL -> $CODE" || falha "PUT na presigned URL -> $CODE"
+CODE=$(upload_post "$RESP" "$OUT_DIR/$FILENAME")
+[ "$CODE" = "204" ] && ok "POST no S3 -> $CODE" || { falha "POST no S3 -> $CODE"; cat "$OUT_DIR/upload-resp.xml"; echo; }
 
 # ---------------------------------------------------------------------------
 titulo "3. Download como usuario $USER_A (dono)"
@@ -94,17 +103,41 @@ CODE=$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/documents/$KEY")
 [ "$CODE" = "401" ] && ok "HTTP $CODE sem Authorization" || falha "esperado 401, veio $CODE"
 
 # ---------------------------------------------------------------------------
-titulo "6. Block Public Access: URL publica direta do S3"
+titulo "6. Validacao de payload no API Gateway (content_type fora do enum)"
+CODE=$(curl -sS -o "$OUT_DIR/400.json" -w '%{http_code}' -X POST "$API_URL/documents" \
+  -H "Authorization: $TOKEN_A" -H "Content-Type: application/json" \
+  -d '{"filename":"virus.exe","content_type":"application/x-msdownload"}')
+cat "$OUT_DIR/400.json"; echo
+[ "$CODE" = "400" ] && ok "HTTP $CODE rejeitado antes da Lambda" || falha "esperado 400, veio $CODE"
+
+# ---------------------------------------------------------------------------
+titulo "7. Documento inexistente"
+CODE=$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/documents/usuario-$USER_A/nao-existe.pdf" -H "Authorization: $TOKEN_A")
+[ "$CODE" = "404" ] && ok "HTTP $CODE" || falha "esperado 404, veio $CODE"
+
+# ---------------------------------------------------------------------------
+titulo "8. Limite de tamanho imposto pelo S3 (politica do presigned POST)"
+MAX_BYTES=$(curl -sS -X POST "$API_URL/documents" -H "Authorization: $TOKEN_A" -H "Content-Type: application/json" \
+  -d '{"filename":"grande.pdf","content_type":"application/pdf"}' | tee "$OUT_DIR/grande.json" | jq -r '.max_bytes')
+head -c $((MAX_BYTES + 1024)) /dev/zero > "$OUT_DIR/grande.pdf"
+CODE=$(upload_post "$(cat "$OUT_DIR/grande.json")" "$OUT_DIR/grande.pdf")
+[ "$CODE" = "400" ] && ok "HTTP $CODE EntityTooLarge para $((MAX_BYTES / 1024 / 1024)) MB + 1 KB" || falha "esperado 400, veio $CODE"
+rm -f "$OUT_DIR/grande.pdf"
+
+# ---------------------------------------------------------------------------
+titulo "9. Block Public Access: URL publica direta do S3"
 CODE=$(curl -sS -o /dev/null -w '%{http_code}' "https://$BUCKET.s3.$REGION.amazonaws.com/$KEY")
 [ "$CODE" = "403" ] && ok "HTTP $CODE no acesso publico" || falha "esperado 403, veio $CODE"
 
 # ---------------------------------------------------------------------------
-titulo "7. Configuracao do bucket $BUCKET"
-echo "-- objetos:"; aws s3 ls "s3://$BUCKET/" --recursive
+titulo "10. Evidencias de configuracao"
+echo "-- objetos em $BUCKET:"; aws s3 ls "s3://$BUCKET/" --recursive
 echo "-- versioning:"; aws s3api get-bucket-versioning --bucket "$BUCKET" --output json | jq -c .
 echo "-- block public access:"; aws s3api get-public-access-block --bucket "$BUCKET" --output json | jq -c .PublicAccessBlockConfiguration
 echo "-- lifecycle:"; aws s3api get-bucket-lifecycle-configuration --bucket "$BUCKET" --output json \
-  | jq -c '.Rules[] | {ID, Status, Prefix: .Filter.Prefix, Transitions, NoncurrentVersionTransitions}'
+  | jq -c '.Rules[] | {ID, Status, Prefix: .Filter.Prefix, Transitions, NoncurrentVersionTransitions, NoncurrentVersionExpiration}'
+echo "-- alarmes:"; aws cloudwatch describe-alarms --region "$REGION" --alarm-name-prefix "$(terraform -chdir="$TF_DIR" output -raw lambda_function_name | sed 's/-api$//')" \
+  --query 'MetricAlarms[].{alarme:AlarmName,estado:StateValue}' --output table
 ok "evidencias coletadas"
 
 # ---------------------------------------------------------------------------
