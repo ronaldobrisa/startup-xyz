@@ -1,0 +1,84 @@
+# Plano B da apresentacao e rede de seguranca contra recurso orfao.
+# Disparo manual apenas (workflow_dispatch). Nunca roda apply automaticamente.
+name: Deploy (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "O que fazer"
+        type: choice
+        required: true
+        options: [apply, destroy]
+      environment:
+        description: "Ambiente (arquivo terraform/envs/<environment>.tfvars)"
+        type: string
+        required: true
+        default: demo
+      confirmar:
+        description: "Digite o nome do ambiente novamente para confirmar"
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "1"
+
+jobs:
+  deploy:
+    name: ${{ inputs.acao }} ${{ inputs.environment }}
+    if: inputs.confirmar == inputs.environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Terraform init
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}" \
+            -backend-config="key=${{ inputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}"
+
+      - name: Terraform plan (${{ inputs.acao }})
+        run: |
+          EXTRA=""
+          [ "${{ inputs.acao }}" = "destroy" ] && EXTRA="-destroy"
+          terraform plan -input=false $EXTRA \
+            -var-file="envs/${{ inputs.environment }}.tfvars" -out=tfplan
+          terraform show -no-color tfplan
+
+      - name: Terraform apply
+        run: terraform apply -input=false tfplan
+
+      - name: Outputs
+        if: inputs.acao == 'apply'
+        run: terraform output
+
+      - name: Verificar recursos orfaos
+        if: inputs.acao == 'destroy'
+        working-directory: .
+        env:
+          PROJECT: startup-xyz
+          ENV: ${{ inputs.environment }}
+        run: bash scripts/check-orphans.sh

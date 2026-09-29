@@ -1,0 +1,188 @@
+[tools]
+terraform = "1.15.8"
+tflint = "latest"
+jq = "latest"
+gh = "2.97.0"
+
+[env]
+PROJECT = "startup-xyz"
+ENV = "demo"
+AWS_REGION = "us-east-1"
+AWS_ACCOUNT_ID = "992382426972"
+STATE_BUCKET = "startup-xyz-tfstate-992382426972"
+TF_IN_AUTOMATION = "1"
+
+# ---------------------------------------------------------------------------
+# Qualidade
+# ---------------------------------------------------------------------------
+
+[tasks.fmt]
+description = "terraform fmt em todo o repositorio"
+run = "terraform fmt -recursive terraform"
+
+[tasks.lint]
+description = "fmt -check + validate + tflint (o mesmo que a CI roda)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+terraform fmt -check -recursive terraform
+(cd terraform/bootstrap && terraform init -backend=false -input=false >/dev/null && terraform validate)
+(cd terraform && terraform init -backend=false -input=false >/dev/null && terraform validate)
+tflint --init >/dev/null
+(cd terraform && tflint --recursive)
+echo "lint OK"
+"""
+
+# ---------------------------------------------------------------------------
+# Bootstrap (uma vez por conta): bucket de estado, role OIDC, Budget
+# ---------------------------------------------------------------------------
+
+[tasks.bootstrap-plan]
+description = "Plan do bootstrap (bucket de estado, role OIDC do GitHub, Budget). Estado local."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform/bootstrap
+terraform init -input=false
+terraform plan -input=false -out=tfplan
+"""
+
+[tasks.bootstrap-apply]
+description = "Aplica o tfplan gerado por bootstrap-plan. CRIA RECURSOS PERMANENTES NA CONTA."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform/bootstrap
+[ -f tfplan ] || { echo "rode 'mise run bootstrap-plan' primeiro"; exit 1; }
+terraform apply -input=false tfplan
+rm -f tfplan
+terraform output
+"""
+
+# ---------------------------------------------------------------------------
+# Ciclo da demo
+# ---------------------------------------------------------------------------
+
+[tasks.init]
+description = "terraform init com backend S3 (key por ambiente: $ENV/terraform.tfstate)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform
+terraform init -input=false -reconfigure \
+  -backend-config="bucket=${STATE_BUCKET}" \
+  -backend-config="key=${ENV}/terraform.tfstate" \
+  -backend-config="region=${AWS_REGION}"
+"""
+
+[tasks.plan]
+description = "terraform plan do ambiente $ENV (gera terraform/tfplan)"
+depends = ["init"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform
+terraform plan -input=false -var-file="envs/${ENV}.tfvars" -out=tfplan
+"""
+
+[tasks.apply]
+description = "terraform apply do ambiente $ENV usando o tfplan revisado (roda 'plan' antes se nao existir)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform
+[ -f tfplan ] || { echo "sem tfplan: rode 'mise run plan' e revise antes"; exit 1; }
+start=$(date +%s)
+terraform apply -input=false tfplan
+rm -f tfplan
+echo
+terraform output
+echo
+echo "apply concluido em $(( $(date +%s) - start ))s"
+"""
+
+[tasks.smoke]
+description = "Prova ao vivo: cria usuarios 123/456 no Cognito, upload/download por presigned URL, isolamento (403), Block Public Access, lifecycle"
+run = "bash scripts/smoke.sh"
+
+[tasks.destroy-plan]
+description = "Plan de destruicao do ambiente $ENV (gera terraform/tfplan-destroy)"
+depends = ["init"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform
+terraform plan -destroy -input=false -var-file="envs/${ENV}.tfvars" -out=tfplan-destroy
+"""
+
+[tasks.destroy]
+description = "terraform destroy do ambiente $ENV usando tfplan-destroy (roda 'destroy-plan' antes se nao existir)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform
+[ -f tfplan-destroy ] || { echo "sem tfplan-destroy: rode 'mise run destroy-plan' e revise antes"; exit 1; }
+start=$(date +%s)
+terraform apply -input=false tfplan-destroy
+rm -f tfplan-destroy
+echo "destroy concluido em $(( $(date +%s) - start ))s"
+"""
+
+[tasks.check-orphans]
+description = "Falha se sobrar qualquer recurso com tags Project=$PROJECT e Environment=$ENV (prova de conta limpa)"
+run = "bash scripts/check-orphans.sh"
+
+[tasks.demo]
+description = "Ciclo completo: plan -> apply -> smoke -> destroy-plan -> destroy -> check-orphans (uso: mise run demo [--pause])"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+pause() { if [ "${1:-}" = "--pause" ]; then read -r -p ">>> ENTER para continuar " _; fi; }
+total_start=$(date +%s)
+mise run plan
+mise run apply
+pause "${1:-}"
+mise run smoke
+pause "${1:-}"
+mise run destroy-plan
+mise run destroy
+mise run check-orphans
+echo "demo completa em $(( $(date +%s) - total_start ))s"
+"""
+
+# ---------------------------------------------------------------------------
+# GitHub
+# ---------------------------------------------------------------------------
+
+[tasks.ci-status]
+description = "Ultimas execucoes dos workflows"
+run = """
+#!/usr/bin/env bash
+for wf in terraform.yml deploy.yml; do
+  echo "=== $wf ==="
+  gh run list --workflow="$wf" --limit 3
+  echo
+done
+"""
+
+[tasks.ci-logs]
+description = "Log da ultima execucao com falha (uso: mise run ci-logs [workflow.yml])"
+run = """
+#!/usr/bin/env bash
+WORKFLOW="${1:-terraform.yml}"
+RUN_ID=$(gh run list --workflow="$WORKFLOW" --status failure --limit 1 --json databaseId --jq '.[0].databaseId')
+if [ -z "$RUN_ID" ]; then echo "nenhuma falha em $WORKFLOW"; else gh run view "$RUN_ID" --log-failed; fi
+"""
+
+[tasks.ci-deploy]
+description = "Dispara o deploy.yml manualmente (uso: mise run ci-deploy apply|destroy) -- plano B se o notebook falhar"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+ACAO="${1:?uso: mise run ci-deploy apply|destroy}"
+gh workflow run deploy.yml --ref main -f acao="$ACAO" -f environment="${ENV}" -f confirmar="${ENV}"
+"""
+
+[tasks.repo-public]
+description = "Torna o repositorio publico (apos a apresentacao, se desejar)"
+run = "gh repo edit ronaldobrisa/startup-xyz --visibility public --accept-visibility-change-consequences"

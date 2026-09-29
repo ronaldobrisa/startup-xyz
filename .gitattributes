@@ -1,0 +1,9 @@
+# LF em tudo: scripts bash e workflows quebram com CRLF nos runners Linux e no Git Bash.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.tf text eol=lf
+*.tfvars text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
