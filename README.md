@@ -61,8 +61,13 @@ mise run bootstrap-plan     # revise o plano (10 recursos)
 mise run bootstrap-apply    # bucket de estado, role gh-actions-startup-xyz, SNS, Budget
 ```
 
-Confirme a assinatura de e-mail do SNS (link recebido em `ti.rbrodrigues@gmail.com`), remova o
-`terraform/backend_override.tf` se existir, e configure as variáveis do repositório no GitHub:
+O estado do bootstrap vive no próprio bucket que ele cria, na key `bootstrap/terraform.tfstate`.
+Na primeira execução em uma conta nova, o bucket ainda não existe: rode o `terraform init` do
+bootstrap sem backend (`-backend=false`), aplique com estado local e depois migre com
+`terraform init -migrate-state` passando `-backend-config` de bucket e região.
+
+Confirme a assinatura de e-mail do SNS (link recebido em `ti.rbrodrigues@gmail.com`) e configure as
+variáveis do repositório no GitHub:
 
 ```bash
 gh variable set AWS_REGION --body us-east-1

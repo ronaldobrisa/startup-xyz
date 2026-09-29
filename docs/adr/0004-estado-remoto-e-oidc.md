@@ -9,7 +9,8 @@ pipeline precisa de credenciais AWS sem chaves de longa duração no GitHub.
 
 ## Decisão
 
-- **Bootstrap separado** (`terraform/bootstrap`, estado local, aplicado uma vez): bucket
+- **Bootstrap separado** (`terraform/bootstrap`, aplicado uma vez com estado local e depois migrado
+  para o próprio bucket na key `bootstrap/terraform.tfstate`): bucket
   `startup-xyz-tfstate-<conta>` versionado, criptografado e sem acesso público; role
   `gh-actions-startup-xyz`; tópico SNS de alertas com assinatura de e-mail; AWS Budget de US$ 5
   por mês para a conta inteira (filtro por tag exigiria ativar a tag de alocação de custos no

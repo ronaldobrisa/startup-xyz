@@ -29,13 +29,24 @@ tflint --init >/dev/null
 echo "lint OK"
 """
 
-[tasks.bootstrap-plan]
-description = "Plan do bootstrap (bucket de estado, role OIDC do GitHub, Budget). Estado local."
+[tasks.bootstrap-init]
+description = "terraform init do bootstrap com estado no bucket do projeto (key bootstrap/terraform.tfstate)"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
 cd terraform/bootstrap
-terraform init -input=false
+terraform init -input=false -reconfigure \
+  -backend-config="bucket=${STATE_BUCKET}" \
+  -backend-config="region=${AWS_REGION}"
+"""
+
+[tasks.bootstrap-plan]
+description = "Plan do bootstrap (bucket de estado, role OIDC do GitHub, SNS, Budget)"
+depends = ["bootstrap-init"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd terraform/bootstrap
 terraform plan -input=false -out=tfplan
 """
 
