@@ -62,7 +62,7 @@ jobs:
           tflint --recursive
 
   plan:
-    name: Plan (${{ github.event_name == 'pull_request' && 'PR' || 'main' }})
+    name: Plan
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
