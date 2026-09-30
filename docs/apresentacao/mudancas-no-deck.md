@@ -120,9 +120,10 @@ Tabela atualizada:
 
 ## Slide 15 · Demonstração
 
-- Trocar o texto por três blocos com capturas: (1) `terraform plan/apply` com "33 recursos em
-  ~2 min" (captura do ensaio), (2) saída do `smoke` com as 10 verificações e o 403 em destaque,
-  (3) dashboard do CloudWatch com os alarmes em OK.
+- Trocar o texto por três blocos com capturas: (1) `docs/apresentacao/evidencias/01-terraform-apply.png`
+  (33 recursos em 72 s), (2) `docs/apresentacao/evidencias/02-smoke-test.png` (13 verificações, 403 em
+  destaque), (3) dashboard do CloudWatch com os alarmes em OK, capturado no ensaio de 06/10 com o
+  ambiente ligado.
 - Fala do Ronaldo: rodar `mise run smoke` ao vivo, abrir o bucket e o dashboard, mostrar a aba
   Actions verde. Destroy fica para depois da banca.
 
