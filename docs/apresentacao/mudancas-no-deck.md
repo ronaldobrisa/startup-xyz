@@ -82,12 +82,14 @@ Tabela atualizada:
 
 ## Slide 11 · FinOps
 
-- Adicionar a tabela de custo mensal do mês 12 (de `docs/custos/estimativa.md`): S3 US$ 165,60,
-  transferência US$ 45, API US$ 0,35, Lambda/Cognito/CloudWatch US$ 0. Total ≈ US$ 211.
+- Adicionar a tabela de custo mensal do ano 2 (de `docs/custos/estimativa.md`): S3 Standard US$ 165,60,
+  Deep Archive US$ 9,75, API US$ 0,19, CloudWatch US$ 0,90 (preço de lista), transferência de saída
+  US$ 0 (60 GB, premissa de 10% de downloads, dentro da franquia), Lambda e Cognito US$ 0. Total US$ 176,70.
 - Corrigir a poupança: "≈ US$ 156 por mês no ano 2 com lifecycle (331 → 175)".
-- Incluir o link do AWS Pricing Calculator (você gera com o passo a passo do documento).
-- Fala da Jéssica: "99 % do custo é armazenamento e transferência; computação é centavos. Por isso
-  otimizamos classe de armazenamento, não Lambda."
+- Incluir o link do AWS Pricing Calculator: https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6
+- Fala da Jéssica: "99 % do custo é armazenamento; computação é centavos. Por isso otimizamos classe de
+  armazenamento, não Lambda. Assumimos 10 % de recuperação por usuários, 60 GB por mês, dentro da franquia
+  gratuita; acima de 100 GB a transferência custa US$ 0,09 por GB e a mitigação é CloudFront ou repasse."
 
 ## Slide 12 · Resiliência
 

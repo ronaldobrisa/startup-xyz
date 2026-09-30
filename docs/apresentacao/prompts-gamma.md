@@ -121,15 +121,14 @@ e, na camada 2, acrescente "+ validação de payload no gateway".
 
 ```
 Mantenha o gráfico. Substitua o bloco "Projeção para 50k docs/mês" por uma tabela pequena, título
-"Custo mensal no mês 12 (us-east-1, 50 mil docs/mês, 12 MB cada)": S3 Standard 7.200 GB | US$ 165,60;
-Transferência de saída 500 GB | US$ 45,00; API Gateway 100 mil req | US$ 0,35; Lambda, Cognito, CloudWatch |
-US$ 0 (faixa gratuita); Total | ≈ US$ 211. Abaixo, em destaque: "99% do custo é armazenamento e
-transferência; computação é centavos. Por isso otimizamos classe de armazenamento, não Lambda."
+"Custo mensal no ano 2 (us-east-1, 50 mil docs/mês de 12 MB, 10% recuperados)": S3 Standard 7.200 GB |
+US$ 165,60; S3 Deep Archive 7.200 GB + transições | US$ 9,75; API Gateway 55 mil req | US$ 0,19;
+CloudWatch (preço de lista) | US$ 0,90; Transferência de saída 60 GB | US$ 0 (franquia de 100 GB);
+Lambda e Cognito | US$ 0; Total | US$ 176,70. Abaixo, em destaque: "99% do custo é armazenamento;
+computação é centavos. Por isso otimizamos classe de armazenamento, não Lambda."
 Troque "Estimativa de poupança: USD 150+/mês no ano 2" por "Economia com lifecycle: ≈ US$ 156/mês no ano 2
-(US$ 331 → US$ 175)". Acrescente uma linha: "Estimativa oficial: AWS Pricing Calculator — [link]".
+(US$ 331 → US$ 175)". Acrescente uma linha: "Estimativa oficial: AWS Pricing Calculator — https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6".
 ```
-
-Depois: substitua `[link]` pelo link gerado no Calculator.
 
 ## Slide 12 · Resiliência e disponibilidade
 

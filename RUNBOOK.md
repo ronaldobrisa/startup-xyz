@@ -105,7 +105,7 @@ política `TenantObjects` (defesa em profundidade).
 - Por que não VPC? Nada roda em rede privada; VPC adicionaria NAT e custo sem proteger nada aqui.
 
 **Custos (Jéssica)**
-- Recurso mais caro? Armazenamento S3 Standard (US$ 165 no mês 12) e transferência de saída (US$ 45). Computação é centavos.
+- Recurso mais caro? Armazenamento S3 Standard (US$ 165 por mês), 99% do total de US$ 176,70 no ano 2. Computação é centavos. Transferência de saída fica na franquia gratuita com 10% de downloads (60 GB); acima de 100 GB custa US$ 0,09 por GB.
 - Como reduziriam? Lifecycle já reduz 96 % por GB arquivado; próximo passo é CloudFront ou cobrar egress; Intelligent-Tiering se o padrão de acesso for imprevisível.
 - Com 10× a demanda? Linear em S3 e egress; nada muda na arquitetura. `docs/custos/estimativa.md`.
 

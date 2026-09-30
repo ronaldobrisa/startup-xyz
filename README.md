@@ -120,9 +120,10 @@ Header obrigatório: `Authorization: <ID token do Cognito>`. Tipos aceitos: PDF,
 
 Ambiente `demo` de ponta a ponta fica abaixo de US$ 0,05: Lambda, Cognito Lite, alarmes e dashboard
 estão na faixa gratuita permanente, e API Gateway e S3 cobram frações de centavo por dezenas de
-requisições. No cenário do PDF (50 mil documentos/mês) o custo é ≈ US$ 211/mês no mês 12, 99% em
-armazenamento e transferência; o lifecycle economiza ≈ US$ 156/mês a partir do ano 2. Detalhes em
-[docs/custos/estimativa.md](docs/custos/estimativa.md).
+requisições. No cenário do PDF (50 mil documentos/mês, 10% recuperados) o custo é ≈ US$ 167/mês no mês 12 e
+US$ 176,70/mês no ano 2 com lifecycle, 99% em armazenamento; sem lifecycle o ano 2 custaria US$ 331.
+Detalhes em [docs/custos/estimativa.md](docs/custos/estimativa.md); estimativa oficial no
+[AWS Pricing Calculator](https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6).
 
 ## Roadmap (Fase 2)
 

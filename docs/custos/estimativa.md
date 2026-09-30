@@ -1,9 +1,12 @@
 # Estimativa de custos (us-east-1, preços públicos de lista, sem impostos)
 
 Cenário do PDF: **50 mil documentos por mês**, média de **12 MB** (≈ 600 GB novos por mês),
-um download por documento, 500 usuários ativos por mês. Preços conferidos em setembro de 2026;
-reproduza no [AWS Pricing Calculator](https://calculator.aws/) com os mesmos parâmetros para gerar o
-link oficial (passo a passo no fim).
+500 usuários ativos por mês. Premissa de acesso: os documentos entram para treino de IA e **10% são
+recuperados por usuários finais** (5 mil downloads, 60 GB por mês); o consumo pesado acontece dentro da
+AWS (Textract e Bedrock na Fase 2), sem transferência para a internet.
+
+**Estimativa oficial no AWS Pricing Calculator (mês 24, com lifecycle): [https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6](https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6)**
+US$ 176,70 por mês, gerada em 29/09/2026.
 
 ## Preços unitários usados
 
@@ -34,16 +37,18 @@ confirmar no Calculator.
 | Serviço | Cálculo | US$/mês |
 |---|---|---|
 | S3 Standard | 7.200 GB × 0,023 | 165,60 |
-| S3 requisições | 50 mil POST + 50 mil GET | 0,27 |
-| Transferência de saída | 600 GB de downloads − 100 GB grátis = 500 GB × 0,09 | 45,00 |
-| API Gateway | 100 mil × 3,50/milhão | 0,35 |
-| Lambda | 100 mil invocações × 0,2 s × 0,25 GB = 5.000 GB-s | 0,00 (faixa gratuita) |
+| S3 requisições | 50 mil POST + 5 mil GET | 0,25 |
+| Transferência de saída | 60 GB de downloads, dentro dos 100 GB gratuitos | 0,00 |
+| API Gateway | 55 mil × 3,50/milhão | 0,19 |
+| Lambda | 55 mil invocações × 0,2 s × 0,25 GB = 2.750 GB-s | 0,00 (faixa gratuita) |
 | Cognito | 500 usuários ativos | 0,00 |
-| CloudWatch | < 1 GB de logs, 4 alarmes, 1 dashboard | 0,00 |
-| **Total** | | **≈ 211** |
+| CloudWatch | 1 GB de logs, 4 alarmes, 1 dashboard | 0,00 na faixa gratuita (o Calculator mostra 0,90 a preço de lista) |
+| **Total** | | **≈ 166** |
 
-Leitura para a banca: **armazenamento e transferência são 99% do custo**; computação e API são
-centavos. É isso que justifica investir em lifecycle e não em otimização de Lambda.
+Leitura para a banca: **armazenamento é 99% do custo**; computação e API são centavos. É isso que
+justifica investir em lifecycle e não em otimização de Lambda. Se a taxa de download passar de cerca de
+17% (100 GB por mês), a transferência de saída custa US$ 0,09 por GB excedente; a mitigação é
+CloudFront ou repasse do egress ao cliente.
 
 ## Efeito do lifecycle no mês 24 (fim do ano 2)
 
@@ -54,6 +59,10 @@ centavos. É isso que justifica investir em lifecycle e não em otimização de 
 
 **Economia: ≈ US$ 156 por mês no ano 2**, crescendo a cada ano (cada ano completo migrado
 economiza mais US$ 158 por mês). É a origem do "US$ 150+/mês no ano 2" do slide de FinOps.
+
+O link oficial acima corresponde a este cenário de mês 24: S3 US$ 175,60 (Standard 7.200 GB, Deep Archive
+7.200 GB, 50 mil transições, requisições), API Gateway US$ 0,19, CloudWatch US$ 0,90 a preço de lista,
+Cognito US$ 0,01, Lambda US$ 0. Total US$ 176,70.
 
 ## Provisioned Concurrency (só em prod)
 
@@ -66,7 +75,7 @@ variável apenas onde há SLA de latência.
 | Serviço | US$/mês (mês 12) | Observação |
 |---|---|---|
 | S3 Standard | 1.656 | escala linear; lifecycle passa a economizar ~US$ 1.580 por mês no ano 2 |
-| Transferência de saída | 531 | avaliar CloudFront (US$ 0,085 por GB e cache) ou cobrar egress do cliente |
+| Transferência de saída | 45 | 600 GB de downloads (10%) − 100 GB grátis; avaliar CloudFront ou cobrar egress do cliente |
 | API Gateway | 3,50 | ainda irrelevante; HTTP API economizaria US$ 2,50 |
 | Lambda | 0,60 | sai da faixa gratuita e continua irrelevante |
 | Cognito | 0 a 27 | depende do número de usuários ativos, não de documentos |
@@ -79,32 +88,34 @@ Menos de **US$ 0,05**: alguns KB no S3, poucas dezenas de requisições no API G
 Cognito na faixa gratuita, alarmes e dashboard gratuitos. O Budget de US$ 5 por mês da conta
 alerta se algo ficar ligado.
 
-## Reproduzindo no AWS Pricing Calculator (gera o link para o slide 11)
+## Reproduzindo no AWS Pricing Calculator
 
-O Calculator não tem API; o link de compartilhamento só é criado dentro do site. Roteiro de cliques,
-cerca de 10 minutos:
+Estimativa já gerada: [https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6](https://calculator.aws/#/estimate?id=b94a26441f577ba9c387bc20a0e3a044c183c2e6). Para refazer ou ajustar, o roteiro de cliques (cerca de 10 minutos):
 
 1. Abrir https://calculator.aws/#/createCalculator e clicar em **Create estimate**. Nome da estimativa:
    `Startup XYZ - 50k documentos/mes - ano 1 (mes 12)`.
 2. **Add service** → buscar `S3` → **Configure** → região **US East (N. Virginia)**:
    - S3 Standard: *Storage amount* 7.200 GB por mês; *PUT, COPY, POST, LIST requests* 50.000;
-     *GET, SELECT, and all other requests* 50.000; *Data returned by S3 Select* 0.
-   - Marcar **S3 Glacier Deep Archive**: *Storage amount* 7.200 GB; *Lifecycle Transition requests into
-     Deep Archive* 50.000; *Data retrieval* 0.
-   - Em **Data transfer**: *Outbound data transfer* → Internet, 600 GB por mês.
+     *GET, SELECT, and all other requests* 5.000; *Data returned by S3 Select* 0.
+   - Marcar **S3 Glacier Deep Archive**: *Storage amount* 7.200 GB; *Average Object Size* 12 MB;
+     *Lifecycle Transition requests into Deep Archive* 50.000; *Data retrieval* 0.
+   - Em **Data transfer**: *Outbound data transfer* → Internet, 60 GB por mês (unidade GB, não TB).
    - **Save and add service**.
-3. `API Gateway` → **REST API**: *Requests* 0,1 milhão por mês; cache desligado → **Save and add service**.
-4. `Lambda` → arquitetura **Arm**: *Number of requests* 100.000 por mês; *Duration* 200 ms;
+3. `API Gateway` → **REST API**: *Requests* 0,055 milhão por mês (o campo é em milhões); cache desligado →
+   **Save and add service**.
+4. `Lambda` → arquitetura **Arm**: *Number of requests* 55.000 por mês; *Duration* 200 ms;
    *Memory* 256 MB; *Ephemeral storage* 512 MB → **Save and add service**.
-5. `Cognito` → **User Pools**: *Monthly active users* 500; tier **Lite** → **Save and add service**.
+5. `Cognito` → **User Pools**: *Monthly active users* 500; tier **Lite**; *Advanced security features* e
+   *SAML/OIDC federation* zerados → **Save and add service**.
 6. `CloudWatch`: *Standard logs data ingested* 1 GB; *Number of alarms (standard resolution)* 4;
-   *Number of dashboards* 1 → **Save and add service**.
+   *Number of dashboards* 1; nada em mobile/OTEL, RUM ou Synthetics → **Save and add service**.
+   O Calculator não aplica a faixa gratuita de alarmes e logs, por isso mostra US$ 0,90.
 7. Em **My estimate**: **Share** → **Agree and continue** → copiar o link público. Ele vai para o slide 11
    e para a seção "Custo" do README.
 8. Opcional, segunda estimativa `ano 2 (mes 24) com lifecycle`: S3 Standard 7.200 GB + Deep Archive
    7.200 GB; e uma terceira `ano 2 sem lifecycle`: S3 Standard 14.400 GB. A diferença entre as duas é
    a economia de ≈ US$ 156 por mês do slide de FinOps.
 
-Resultado esperado no Calculator para o mês 12: ≈ US$ 211 por mês. Se o total divergir mais de 5 %,
-a causa provável é a franquia de 100 GB de transferência (o Calculator pode não descontar) ou o
-Lambda fora da faixa gratuita (desmarcar "Free Tier" só se a conta já a tiver esgotado).
+Resultado esperado: US$ 176,70 por mês no cenário de mês 24 (com Deep Archive) ou ≈ US$ 167 no mês 12
+(sem Deep Archive). Erros comuns que estouram o total: unidade TB em vez de GB na transferência,
+campo de requisições do API Gateway em milhões, HTTP API em vez de REST, recursos avançados do Cognito.
