@@ -107,7 +107,10 @@ echo "apply concluido em $(( $(date +%s) - start ))s"
 
 [tasks.smoke]
 description = "Prova ao vivo: cria usuarios 123/456 no Cognito, upload/download por presigned URL, isolamento (403), Block Public Access, lifecycle"
-run = "bash scripts/smoke.sh"
+run = """
+#!/usr/bin/env bash
+exec "$BASH" scripts/smoke.sh "$@"
+"""
 
 [tasks.destroy-plan]
 description = "Plan de destruicao do ambiente $ENV (gera terraform/tfplan-destroy)"
@@ -164,7 +167,10 @@ echo "Passo 3 - com o objeto restaurado, GET /documents/$KEY volta a funcionar p
 
 [tasks.check-orphans]
 description = "Falha se sobrar qualquer recurso com tags Project=$PROJECT e Environment=$ENV (prova de conta limpa)"
-run = "bash scripts/check-orphans.sh"
+run = """
+#!/usr/bin/env bash
+exec "$BASH" scripts/check-orphans.sh "$@"
+"""
 
 [tasks.demo]
 description = "Ciclo completo: plan -> apply -> smoke -> destroy-plan -> destroy -> check-orphans (uso: mise run demo [--pause])"
